@@ -14,14 +14,17 @@
             align-items: center;
             font-family: Arial, sans-serif;
             margin: 20px;
-            height: 100vh; /* Full height */
+            height: 100vh;
         }
         #flipbook {
-            width: 90vw; /* Set width to 75% of viewport width */
-            height: 80vh; /* Set height to 75% of viewport height */
+            width: 90vw;
+            height: 90vh;
             position: relative;
             perspective: 1500px;
-            margin: 20px 0; /* Margin for spacing */
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            overflow: hidden;
+            cursor: pointer;
         }
         .page {
             width: 100%;
@@ -35,72 +38,88 @@
             height: 100%;
             display: block;
         }
-        .nav-button {
+        #open-btn {
             padding: 10px 20px;
-            margin: 5px;
             font-size: 16px;
             cursor: pointer;
         }
         #slider-container {
-            position: relative;
             width: 90vw;
-            height: 20px;
-            background-color: #ddd;
             margin-top: 20px;
-            border-radius: 10px;
+            display: flex;
+            justify-content: center;
         }
         #slider {
-            position: absolute;
-            top: -7px;
-            width: 100%;
-            height: 20px;
-            background-color: transparent;
+            width: 80%;
+            margin: 10px;
+            position: relative;
+            height: 5px;
+            background-color: #ddd;
+            border-radius: 5px;
         }
-        #ball {
-            position: absolute;
-            top: 0;
+        #slider-ball {
             width: 20px;
             height: 20px;
+            position: absolute;
             background-color: #007bff;
             border-radius: 50%;
             cursor: pointer;
+            top: -8px; /* Center the ball over the slider */
         }
     </style>
 </head>
 <body>
-    <h4>PDF Flipbook Viewer</h4>
-    <input type="file" id="file-input" accept="application/pdf"/>
+    <input type="file" id="file-input" accept="application/pdf" style="display:none;"/>
 
-    <div id="flipbook">
-        <!-- Pages will be dynamically added here -->
-    </div>
+    <button id="open-btn">Open PDF</button>
 
-    <div id="controls">
-        <button id="prev" class="nav-button">Previous</button>
-        <button id="next" class="nav-button">Next</button>
-    </div>
+    <div id="flipbook"></div>
 
-    <!-- Slider for Page Navigation -->
     <div id="slider-container">
-        <div id="slider"></div>
-        <div id="ball"></div>
+        <div id="slider">
+            <div id="slider-ball"></div>
+        </div>
     </div>
 
     <script>
         let pdfDoc = null;
-        let currentPage = 1; // Keep track of the current page
         const flipbook = document.getElementById('flipbook');
-        const prevButton = document.getElementById('prev');
-        const nextButton = document.getElementById('next');
-        const scale = 1.5; // Adjust scale as needed
+        const fileInput = document.getElementById('file-input');
+        const openBtn = document.getElementById('open-btn');
         const slider = document.getElementById('slider');
-        const ball = document.getElementById('ball');
-        const sliderContainer = document.getElementById('slider-container');
-        let dragging = false;
+        const sliderBall = document.getElementById('slider-ball');
+        let totalPages = 0;
+        let currentPage = 1;
+        let scale = 1.5; // Adjust scale as needed
 
-        document.getElementById('file-input').addEventListener('change', handleFileSelect);
-        prevButton.addEventListener('click', turnToPrevPage);
-        nextButton.addEventListener('click', turnToNextPage);
+        // Function to handle file input selection
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Click event on flipbook to turn pages
+        flipbook.addEventListener('click', function (event) {
+            const flipbookRect = flipbook.getBoundingClientRect();
+            const clickX = event.clientX - flipbookRect.left;
+            const centerX = flipbookRect.width / 2;
+
+            if (clickX < centerX) {
+                turnToPrevPage();
+            } else {
+                turnToNextPage();
+            }
+        });
+
+        // Open button to trigger file input
+        openBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Keyboard shortcut for "Command + O" to open file dialog
+        document.addEventListener('keydown', (event) => {
+            if (event.metaKey && event.key === 'o') {
+                event.preventDefault();
+                fileInput.click();
+            }
+        });
 
         async function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -109,14 +128,17 @@
                 fileReader.onload = async function () {
                     const typedarray = new Uint8Array(this.result);
                     pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+                    totalPages = pdfDoc.numPages;
                     renderPages();
+                    updateSlider();
                 };
                 fileReader.readAsArrayBuffer(file);
             }
         }
 
+        // Render the pages
         async function renderPages() {
-            flipbook.innerHTML = ''; // Clear previous pages
+            flipbook.innerHTML = '';
             for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
                 const page = await pdfDoc.getPage(pageNum);
                 const viewport = page.getViewport({ scale });
@@ -143,26 +165,57 @@
                 height: flipbook.clientHeight,
                 autoCenter: true,
                 pages: pdfDoc.numPages,
-                elevation: 50,
-                when: {
-                    turning: function (event, page) {
-                        currentPage = page; // Update current page
-                        updateBallPosition(); // Update ball position on page turn
-                    }
-                }
+                elevation: 50
             });
-            updateBallPosition();
         }
 
+        // Turn to the previous page
         function turnToPrevPage() {
             $(flipbook).turn('previous');
         }
 
+        // Turn to the next page
         function turnToNextPage() {
             $(flipbook).turn('next');
         }
 
-        // Adjust flipbook size on window resize
+        // Draggable slider ball functionality
+        sliderBall.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+
+            function onMouseMove(e) {
+                let newLeft = e.clientX - slider.getBoundingClientRect().left - sliderBall.offsetWidth / 2;
+                if (newLeft < 0) newLeft = 0;
+                if (newLeft > slider.offsetWidth - sliderBall.offsetWidth) newLeft = slider.offsetWidth - sliderBall.offsetWidth;
+                sliderBall.style.left = newLeft + 'px';
+
+                // Adjust the flipbook page based on slider position
+                let newPage = Math.round((newLeft / (slider.offsetWidth - sliderBall.offsetWidth)) * (totalPages - 1)) + 1;
+                if (newPage !== currentPage) {
+                    $(flipbook).turn('page', newPage);
+                    currentPage = newPage;
+                }
+            }
+
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        // Update slider position as the flipbook pages are turned
+        function updateSlider() {
+            flipbook.addEventListener('turning', function (event, page) {
+                currentPage = page;
+                const sliderPosition = ((page - 1) / (totalPages - 1)) * (slider.offsetWidth - sliderBall.offsetWidth);
+                sliderBall.style.left = sliderPosition + 'px';
+            });
+        }
+
+        // Window resize event to adjust flipbook size
         window.addEventListener('resize', function () {
             if (flipbook && pdfDoc) {
                 $(flipbook).turn('resize', {
@@ -171,49 +224,6 @@
                 });
             }
         });
-
-        // Update the position of the ball on the slider based on the current page
-        function updateBallPosition() {
-            const numPages = pdfDoc.numPages;
-            const percentage = ((currentPage - 1) / (numPages - 1)) * 100;
-            ball.style.left = `${percentage}%`;
-        }
-
-        // Add drag functionality to the ball
-        ball.addEventListener('mousedown', startDragging);
-        document.addEventListener('mouseup', stopDragging);
-        document.addEventListener('mousemove', dragBall);
-
-        function startDragging(e) {
-            dragging = true;
-        }
-
-        function stopDragging() {
-            dragging = false;
-        }
-
-        function dragBall(e) {
-            if (!dragging) return;
-
-            const rect = sliderContainer.getBoundingClientRect();
-            const sliderWidth = rect.width;
-            let x = e.clientX - rect.left;
-
-            // Ensure the ball stays within the bounds of the slider
-            if (x < 0) x = 0;
-            if (x > sliderWidth) x = sliderWidth;
-
-            const percentage = (x / sliderWidth) * 100;
-            ball.style.left = `${percentage}%`;
-
-            // Convert the slider position back to a page number
-            const numPages = pdfDoc.numPages;
-            const newPage = Math.round((percentage / 100) * (numPages - 1)) + 1;
-
-            if (newPage !== currentPage) {
-                $(flipbook).turn('page', newPage);
-            }
-        }
     </script>
 </body>
 </html>
