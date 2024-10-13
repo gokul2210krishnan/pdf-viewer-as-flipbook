@@ -125,12 +125,19 @@
     pdfDoc.getPage(pageNumber).then((page) => {
       const viewport = page.getViewport({ scale: 1 });
       const scale = flipbookContainer.clientWidth / viewport.width; // Scale to fit screen width
-      const scaledViewport = page.getViewport({ scale });
 
+      // ** Set up higher resolution rendering **
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
-      canvas.height = scaledViewport.height;
+
+      const devicePixelRatio = window.devicePixelRatio || 1;
+      const scaledViewport = page.getViewport({ scale: scale * devicePixelRatio });
+
+      // Set canvas size based on device pixel ratio
       canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      canvas.style.width = `${scaledViewport.width / devicePixelRatio}px`;
+      canvas.style.height = `${scaledViewport.height / devicePixelRatio}px`;
 
       const renderContext = {
         canvasContext: context,
