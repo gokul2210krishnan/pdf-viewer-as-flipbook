@@ -52,35 +52,49 @@
             const flipbook = document.getElementById('flipbook');
             flipbook.innerHTML = ''; // Clear any previous content
 
-            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                const page = await pdf.getPage(pageNum);
-                const scale = 1.5;
-                const viewport = page.getViewport({ scale });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+            const totalPages = pdf.numPages;
 
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
+            // Render the first few pages and continue incrementally
+            renderPages(pdf, 1, totalPages);
+        }
 
-                await page.render(renderContext).promise;
-
-                // Create a page container and add it to the flipbook
-                const pageDiv = document.createElement('div');
-                pageDiv.classList.add('page'); // This class is necessary for turn.js to work
-                pageDiv.appendChild(canvas);
-                flipbook.appendChild(pageDiv);
+        async function renderPages(pdf, pageNum, totalPages) {
+            if (pageNum > totalPages) {
+                // All pages have been rendered, initialize the flipbook
+                $('#flipbook').turn({
+                    width: 800,
+                    height: 600,
+                    autoCenter: true
+                });
+                return;
             }
 
-            // After rendering all pages, initialize turn.js for flipbook functionality
-            $('#flipbook').turn({
-                width: 800,
-                height: 600,
-                autoCenter: true
-            });
+            const page = await pdf.getPage(pageNum);
+            const scale = 1.5;
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+
+            await page.render(renderContext).promise;
+
+            // Create a page container and add it to the flipbook
+            const pageDiv = document.createElement('div');
+            pageDiv.classList.add('page'); // This class is necessary for turn.js to work
+            pageDiv.appendChild(canvas);
+            document.getElementById('flipbook').appendChild(pageDiv);
+
+            // Delay to prevent performance bottlenecks
+            setTimeout(() => {
+                // Recursively render the next page after a short delay
+                renderPages(pdf, pageNum + 1, totalPages);
+            }, 100);  // Adjust delay if needed
         }
     </script>
 
