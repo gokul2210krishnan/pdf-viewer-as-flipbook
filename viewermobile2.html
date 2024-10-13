@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Flipbook</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #f3f3f3;
+      font-family: Arial, sans-serif;
+    }
+    #flipbook-container {
+      width: 100%;
+      height: 90vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      background-color: #fff;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .circle-button {
+      position: absolute;
+      bottom: 5%;
+      right: 5%;
+      background-color: #4CAF50;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+    .circle-button input {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .slider {
+      position: absolute;
+      bottom: 5%;
+      left: 10%;
+      width: 80%;
+      height: 20px;
+      background-color: #ddd;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .slider-ball {
+      position: absolute;
+      top: -7px;
+      width: 35px;
+      height: 35px;
+      background-color: #4CAF50;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    #page-number {
+      position: absolute;
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="flipbook-container">
+    <canvas id="pdf-canvas"></canvas>
+    <div id="page-number">Page: 1</div>
+    <div class="circle-button">
+      <span>+</span>
+      <input type="file" id="choose-file" accept="application/pdf">
+    </div>
+    <div class="slider" id="page-slider">
+      <div class="slider-ball" id="slider-ball"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+  <script>
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let canvas = document.getElementById('pdf-canvas');
+    let ctx = canvas.getContext('2d');
+    let pageNumText = document.getElementById('page-number');
+    const fileInput = document.getElementById('choose-file');
+    const sliderBall = document.getElementById('slider-ball');
+    const pageSlider = document.getElementById('page-slider');
+    
+    // Set up the mobile screen size adjustment
+    function fitCanvasToScreen() {
+      const container = document.getElementById('flipbook-container');
+      canvas.width = container.offsetWidth;
+      canvas.height = container.offsetHeight;
+    }
+    fitCanvasToScreen();
+
+    // Load and render the PDF
+    function renderPage(num) {
+      pdfDoc.getPage(num).then(page => {
+        let viewport = page.getViewport({ scale: 1 });
+        let scale = canvas.width / viewport.width;
+        viewport = page.getViewport({ scale: scale });
+
+        canvas.height = viewport.height;
+        page.render({
+          canvasContext: ctx,
+          viewport: viewport
+        });
+
+        // Update page number display
+        pageNumText.textContent = `Page: ${num}`;
+      });
+    }
+
+    // Open file picker
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function() {
+          const pdfData = new Uint8Array(this.result);
+          pdfjsLib.getDocument(pdfData).promise.then(function(pdf) {
+            pdfDoc = pdf;
+            totalPages = pdf.numPages;
+            renderPage(currentPage);
+
+            // Reset slider ball position and page numbers
+            updateSlider();
+          });
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    // Function to turn the page left or right
+    function turnPage(direction) {
+      if (direction === 'right' && currentPage < totalPages) {
+        currentPage++;
+      } else if (direction === 'left' && currentPage > 1) {
+        currentPage--;
+      }
+      renderPage(currentPage);
+      updateSlider();
+    }
+
+    // Left and right screen click for navigation
+    document.getElementById('flipbook-container').addEventListener('click', function(e) {
+      const x = e.clientX;
+      const width = window.innerWidth;
+
+      if (x >= width * 0.51) {
+        turnPage('right');
+      } else if (x <= width * 0.50) {
+        turnPage('left');
+      }
+    });
+
+    // Update the slider ball position based on page
+    function updateSlider() {
+      const sliderWidth = pageSlider.offsetWidth;
+      const ballPosition = (currentPage / totalPages) * sliderWidth;
+      sliderBall.style.left = `${ballPosition}px`;
+    }
+
+    // Add the slider ball dragging functionality
+    sliderBall.addEventListener('mousedown', function(e) {
+      const sliderWidth = pageSlider.offsetWidth;
+      const startX = e.clientX;
+
+      function moveHandler(e) {
+        const offsetX = e.clientX - startX;
+        let newLeft = Math.max(0, Math.min(sliderWidth, sliderBall.offsetLeft + offsetX));
+        const pageIndex = Math.round((newLeft / sliderWidth) * totalPages);
+        currentPage = Math.max(1, Math.min(pageIndex, totalPages));
+        renderPage(currentPage);
+        updateSlider();
+      }
+
+      function upHandler() {
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+      }
+
+      document.addEventListener('mousemove', moveHandler);
+      document.addEventListener('mouseup', upHandler);
+    });
+
+    // Adjust canvas size on window resize
+    window.addEventListener('resize', fitCanvasToScreen);
+  </script>
+
+</body>
+</html>
