@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Flipbook with Turn.js</title>
+    <title>PDF Flipbook Viewer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="./turn.min.js"></script>
@@ -17,8 +17,8 @@
             height: 100vh; /* Full height */
         }
         #flipbook {
-            width: 75vw; /* Set width to 75% of viewport width */
-            height: 75vh; /* Set height to 75% of viewport height */
+            width: 90vw; /* Set width to 75% of viewport width */
+            height: 90vh; /* Set height to 75% of viewport height */
             position: relative;
             perspective: 1500px;
             margin: 20px 0; /* Margin for spacing */
@@ -44,7 +44,7 @@
     </style>
 </head>
 <body>
-    <h1>PDF Flipbook Viewer</h1>
+    <h4>PDF Flipbook Viewer</h4>
     <input type="file" id="file-input" accept="application/pdf"/>
 
     <div id="flipbook">
