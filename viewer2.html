@@ -94,8 +94,8 @@
             }
 
             // After all pages are rendered, enable navigation
-            document.getElementById('prevBtn').addEventListener('click', goToPreviousPage);
-            document.getElementById('nextBtn').addEventListener('click', goToNextPage);
+            document.getElementById('prevBtn').addEventListener('click', goToPreviousPage, { passive: true });
+            document.getElementById('nextBtn').addEventListener('click', goToNextPage, { passive: true });
         }
 
         async function renderPage(pdf, pageNum) {
