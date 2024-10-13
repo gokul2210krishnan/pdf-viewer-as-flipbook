@@ -8,10 +8,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="./turn.min.js"></script>
     <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         #flipbook {
             width: 800px;
             height: 600px;
-            margin: auto;
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            position: relative;
         }
         .page {
             width: 100%;
@@ -22,6 +29,16 @@
             width: 100%;
             height: auto;
         }
+        .nav-button {
+            cursor: pointer;
+            padding: 10px 15px;
+            margin: 0 10px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
@@ -29,6 +46,11 @@
     <h1>Upload PDF to View as Flipbook</h1>
     <input type="file" id="pdfUpload" accept="application/pdf">
     <div id="flipbook"></div>
+    
+    <div>
+        <button id="prevBtn" class="nav-button">Left</button>
+        <button id="nextBtn" class="nav-button">Right</button>
+    </div>
 
     <script>
         const pdfjsLib = window['pdfjs-dist/build/pdf'];
@@ -45,11 +67,13 @@
             }
         });
 
+        let flipbook; // Declare flipbook variable globally to access it in button functions
+
         async function renderPDF(file) {
             const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
             const pdf = await loadingTask.promise;
 
-            const flipbook = document.getElementById('flipbook');
+            flipbook = document.getElementById('flipbook');
             flipbook.innerHTML = ''; // Clear any previous content
 
             const totalPages = pdf.numPages;
@@ -88,7 +112,7 @@
             const pageDiv = document.createElement('div');
             pageDiv.classList.add('page'); // This class is necessary for turn.js to work
             pageDiv.appendChild(canvas);
-            document.getElementById('flipbook').appendChild(pageDiv);
+            flipbook.appendChild(pageDiv);
 
             // Delay to prevent performance bottlenecks
             setTimeout(() => {
@@ -96,6 +120,24 @@
                 renderPages(pdf, pageNum + 1, totalPages);
             }, 100);  // Adjust delay if needed
         }
+
+        // Function to navigate to the previous page
+        function goToPreviousPage() {
+            if (flipbook) {
+                $('#flipbook').turn('previous');
+            }
+        }
+
+        // Function to navigate to the next page
+        function goToNextPage() {
+            if (flipbook) {
+                $('#flipbook').turn('next');
+            }
+        }
+
+        // Add event listeners to navigation buttons
+        document.getElementById('prevBtn').addEventListener('click', goToPreviousPage);
+        document.getElementById('nextBtn').addEventListener('click', goToNextPage);
     </script>
 
 </body>
