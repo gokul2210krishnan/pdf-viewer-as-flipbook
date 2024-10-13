@@ -19,11 +19,13 @@
             margin: 20px 0;
             border: 1px solid #ccc;
             position: relative;
+            overflow: hidden; /* Hide any overflow content */
         }
         .page {
             width: 100%;
             height: 100%;
             background-color: white;
+            position: relative;
         }
         canvas {
             width: 100%;
@@ -78,21 +80,20 @@
 
             const totalPages = pdf.numPages;
 
-            // Render the first few pages and continue incrementally
-            renderPages(pdf, 1, totalPages);
+            // Initialize the flipbook
+            $('#flipbook').turn({
+                width: 800,
+                height: 600,
+                autoCenter: true
+            });
+
+            // Render each page in the flipbook
+            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                await renderPage(pdf, pageNum);
+            }
         }
 
-        async function renderPages(pdf, pageNum, totalPages) {
-            if (pageNum > totalPages) {
-                // All pages have been rendered, initialize the flipbook
-                $('#flipbook').turn({
-                    width: 800,
-                    height: 600,
-                    autoCenter: true
-                });
-                return;
-            }
-
+        async function renderPage(pdf, pageNum) {
             const page = await pdf.getPage(pageNum);
             const scale = 1.5;
             const viewport = page.getViewport({ scale });
@@ -113,12 +114,6 @@
             pageDiv.classList.add('page'); // This class is necessary for turn.js to work
             pageDiv.appendChild(canvas);
             flipbook.appendChild(pageDiv);
-
-            // Delay to prevent performance bottlenecks
-            setTimeout(() => {
-                // Recursively render the next page after a short delay
-                renderPages(pdf, pageNum + 1, totalPages);
-            }, 100);  // Adjust delay if needed
         }
 
         // Function to navigate to the previous page
