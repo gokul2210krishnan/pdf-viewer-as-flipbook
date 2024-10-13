@@ -84,13 +84,22 @@
             $('#flipbook').turn({
                 width: 800,
                 height: 600,
-                autoCenter: true
+                autoCenter: true,
+                when: {
+                    turning: function(event, page, view) {
+                        console.log('Turning to page: ' + page);
+                    }
+                }
             });
 
             // Render each page in the flipbook
             for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
                 await renderPage(pdf, pageNum);
             }
+
+            // Add event listeners to navigation buttons after all pages are rendered
+            document.getElementById('prevBtn').addEventListener('click', goToPreviousPage);
+            document.getElementById('nextBtn').addEventListener('click', goToNextPage);
         }
 
         async function renderPage(pdf, pageNum) {
@@ -119,20 +128,24 @@
         // Function to navigate to the previous page
         function goToPreviousPage() {
             if (flipbook) {
-                $('#flipbook').turn('previous');
+                const currentPage = $('#flipbook').turn('page');
+                if (currentPage > 1) {
+                    $('#flipbook').turn('previous');
+                }
             }
         }
 
         // Function to navigate to the next page
         function goToNextPage() {
             if (flipbook) {
-                $('#flipbook').turn('next');
+                const totalPages = $('#flipbook').turn('pages');
+                const currentPage = $('#flipbook').turn('page');
+                if (currentPage < totalPages) {
+                    $('#flipbook').turn('next');
+                }
             }
         }
 
-        // Add event listeners to navigation buttons
-        document.getElementById('prevBtn').addEventListener('click', goToPreviousPage);
-        document.getElementById('nextBtn').addEventListener('click', goToNextPage);
     </script>
 
 </body>
