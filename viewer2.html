@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Flipbook</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="./turn.min.js"></script>
+    <style>
+        #flipbook {
+            width: 800px;
+            height: 600px;
+            margin: auto;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Upload PDF to View as Flipbook</h1>
+    <input type="file" id="pdfUpload" accept="application/pdf">
+    <div id="flipbook"></div>
+
+    <script>
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+        // Use the Mozilla CDN for pdf.worker.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
+        document.getElementById('pdfUpload').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                await renderPDF(file);
+            } else {
+                alert('Please upload a valid PDF file.');
+            }
+        });
+
+        async function renderPDF(file) {
+            const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
+            const pdf = await loadingTask.promise;
+
+            const flipbook = document.getElementById('flipbook');
+            flipbook.innerHTML = '';
+
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const scale = 1.5;
+                const viewport = page.getViewport({ scale });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+
+                await page.render(renderContext).promise;
+
+                const pageDiv = document.createElement('div');
+                pageDiv.appendChild(canvas);
+                flipbook.appendChild(pageDiv);
+            }
+
+            $('#flipbook').turn({
+                width: 800,
+                height: 600,
+                autoCenter: true
+            });
+        }
+    </script>
+
+</body>
+</html>
