@@ -13,12 +13,13 @@
             flex-direction: column;
             align-items: center;
             font-family: Arial, sans-serif;
-            margin: 20px;
-            height: 100vh;
+            margin: 0;
+            height: 100vh; /* Full height */
+            overflow: hidden; /* Prevent scrolling */
         }
         #flipbook {
-            width: 90vw;
-            height: 90vh;
+            width: calc(100% - 20px); /* Stretch with 10px margin on each side */
+            height: calc(100vh - 70px); /* Full height minus button and some padding */
             position: relative;
             perspective: 1500px;
             margin: 20px 0;
@@ -39,18 +40,34 @@
             display: block;
         }
         #open-btn {
-            padding: 10px 20px;
-            font-size: 16px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            border: none;
             cursor: pointer;
-        }
-        #slider-container {
-            width: 90vw;
-            margin-top: 20px;
+            font-size: 20px;
             display: flex;
             justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s;
+        }
+        #open-btn:hover {
+            background-color: #0056b3;
+        }
+        #slider-container {
+            width: calc(100% - 20px);
+            margin-top: 20px;
+            position: relative;
+            height: 5px;
         }
         #slider {
-            width: 80%;
+            width: 100%;
             margin: 10px;
             position: relative;
             height: 5px;
@@ -71,7 +88,7 @@
 <body>
     <input type="file" id="file-input" accept="application/pdf" style="display:none;"/>
 
-    <button id="open-btn">Open PDF</button>
+    <button id="open-btn">+</button> <!-- Circular open PDF button -->
 
     <div id="flipbook"></div>
 
@@ -228,6 +245,8 @@
                 sliderBall.style.left = sliderPosition + 'px';
             });
         }
+
+        updateSlider(); // Initial call to set up the slider
     </script>
 </body>
 </html>
