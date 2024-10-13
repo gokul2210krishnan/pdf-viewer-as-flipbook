@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF to Flipbook</title>
+    <title>PDF Flipbook with Turn.js</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="./turn.min.js"></script>
@@ -12,137 +12,95 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
         #flipbook {
-            width: 800px;
-            height: 600px;
-            margin: 20px 0;
-            border: 1px solid #ccc;
+            width: 600px; /* Set width for the flipbook */
+            height: 400px; /* Set height for the flipbook */
             position: relative;
-            overflow: hidden; /* Hide any overflow content */
+            perspective: 1500px;
         }
         .page {
             width: 100%;
             height: 100%;
-            background-color: white;
-            position: relative;
+            position: absolute;
+            background: white;
+            border: 1px solid #000;
         }
         canvas {
             width: 100%;
-            height: auto;
-        }
-        .nav-button {
-            cursor: pointer;
-            padding: 10px 15px;
-            margin: 0 10px;
-            border: none;
-            background-color: #007bff;
-            color: white;
-            font-size: 16px;
-            border-radius: 5px;
+            height: 100%;
+            display: block;
         }
     </style>
 </head>
 <body>
-
-    <h1>Upload PDF to View as Flipbook</h1>
-    <input type="file" id="pdfUpload" accept="application/pdf">
-    <div id="flipbook"></div>
+    <h1>PDF Flipbook Viewer</h1>
+    <input type="file" id="file-input" accept="application/pdf"/>
     
-    <div>
-        <button id="prevBtn" class="nav-button">Left</button>
-        <button id="nextBtn" class="nav-button">Right</button>
+    <div id="flipbook">
+        <!-- Pages will be dynamically added here -->
     </div>
 
     <script>
-        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        let pdfDoc = null;
+        let currentPage = 1;
+        const scale = 1.5; // Adjust scale as needed
+        const flipbook = document.getElementById('flipbook');
 
-        // Use the Mozilla CDN for pdf.worker.js
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+        document.getElementById('file-input').addEventListener('change', handleFileSelect);
 
-        document.getElementById('pdfUpload').addEventListener('change', async function(event) {
+        async function handleFileSelect(event) {
             const file = event.target.files[0];
-            if (file && file.type === 'application/pdf') {
-                await renderPDF(file);
-            } else {
-                alert('Please upload a valid PDF file.');
+            if (file) {
+                const fileReader = new FileReader();
+                fileReader.onload = async function () {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+                    currentPage = 1; // Reset to first page
+                    renderPages();
+                };
+                fileReader.readAsArrayBuffer(file);
             }
-        });
+        }
 
-        let flipbook; // Declare flipbook variable globally to access it in button functions
+        async function renderPages() {
+            flipbook.innerHTML = ''; // Clear previous pages
+            for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale });
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
 
-        async function renderPDF(file) {
-            const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(file));
-            const pdf = await loadingTask.promise;
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
 
-            flipbook = document.getElementById('flipbook');
-            flipbook.innerHTML = ''; // Clear any previous content
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'page';
+                pageDiv.appendChild(canvas);
+                flipbook.appendChild(pageDiv);
+            }
 
-            const totalPages = pdf.numPages;
-
-            // Initialize the flipbook
             $(flipbook).turn({
-                width: 800,
-                height: 600,
+                width: 600,
+                height: 400,
                 autoCenter: true,
-                display: 'double', // This will allow viewing two pages at once
+                pages: pdfDoc.numPages,
+                elevation: 50,
+                when: {
+                    turning: function (event, page) {
+                        currentPage = page;
+                    }
+                }
             });
-
-            // Render each page in the flipbook
-            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-                await renderPage(pdf, pageNum);
-            }
-
-            // After all pages are rendered, enable navigation
-            document.getElementById('prevBtn').addEventListener('click', goToPreviousPage, { passive: true });
-            document.getElementById('nextBtn').addEventListener('click', goToNextPage, { passive: true });
         }
-
-        async function renderPage(pdf, pageNum) {
-            const page = await pdf.getPage(pageNum);
-            const scale = 1.5;
-            const viewport = page.getViewport({ scale });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
-
-            await page.render(renderContext).promise;
-
-            // Create a page container and add it to the flipbook
-            const pageDiv = document.createElement('div');
-            pageDiv.classList.add('page'); // This class is necessary for turn.js to work
-            pageDiv.appendChild(canvas);
-            flipbook.appendChild(pageDiv);
-        }
-
-        // Function to navigate to the previous page
-        function goToPreviousPage() {
-            if (flipbook) {
-                const currentPage = $(flipbook).turn('page');
-                if (currentPage > 1) {
-                    $(flipbook).turn('previous');
-                }
-            }
-        }
-
-        // Function to navigate to the next page
-        function goToNextPage() {
-            if (flipbook) {
-                const totalPages = $(flipbook).turn('pages');
-                const currentPage = $(flipbook).turn('page');
-                if (currentPage < totalPages) {
-                    $(flipbook).turn('next');
-                }
-            }
-        }
-
     </script>
-
 </body>
 </html>
