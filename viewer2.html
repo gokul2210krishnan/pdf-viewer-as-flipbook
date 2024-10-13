@@ -14,10 +14,11 @@
             align-items: center;
             font-family: Arial, sans-serif;
             margin: 20px;
+            height: 100vh; /* Full height */
         }
         #flipbook {
-            width: 600px; /* Set width for the flipbook */
-            height: 400px; /* Set height for the flipbook */
+            width: 75vw; /* Set width to 75% of viewport width */
+            height: 75vh; /* Set height to 75% of viewport height */
             position: relative;
             perspective: 1500px;
             margin: 20px 0; /* Margin for spacing */
@@ -101,8 +102,8 @@
             }
 
             $(flipbook).turn({
-                width: 600,
-                height: 400,
+                width: flipbook.clientWidth,
+                height: flipbook.clientHeight,
                 autoCenter: true,
                 pages: pdfDoc.numPages,
                 elevation: 50,
@@ -121,6 +122,16 @@
         function turnToNextPage() {
             $(flipbook).turn('next');
         }
+
+        // Adjust flipbook size on window resize
+        window.addEventListener('resize', function () {
+            if (flipbook && pdfDoc) {
+                $(flipbook).turn('resize', {
+                    width: flipbook.clientWidth,
+                    height: flipbook.clientHeight,
+                });
+            }
+        });
     </script>
 </body>
 </html>
