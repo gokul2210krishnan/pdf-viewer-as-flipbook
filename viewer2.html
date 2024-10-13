@@ -20,6 +20,7 @@
             height: 400px; /* Set height for the flipbook */
             position: relative;
             perspective: 1500px;
+            margin: 20px 0; /* Margin for spacing */
         }
         .page {
             width: 100%;
@@ -33,23 +34,35 @@
             height: 100%;
             display: block;
         }
+        .nav-button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <h1>PDF Flipbook Viewer</h1>
     <input type="file" id="file-input" accept="application/pdf"/>
-    
+
     <div id="flipbook">
         <!-- Pages will be dynamically added here -->
     </div>
 
+    <button id="prev" class="nav-button">Previous</button>
+    <button id="next" class="nav-button">Next</button>
+
     <script>
         let pdfDoc = null;
-        let currentPage = 1;
-        const scale = 1.5; // Adjust scale as needed
         const flipbook = document.getElementById('flipbook');
+        const prevButton = document.getElementById('prev');
+        const nextButton = document.getElementById('next');
+        const scale = 1.5; // Adjust scale as needed
 
         document.getElementById('file-input').addEventListener('change', handleFileSelect);
+        prevButton.addEventListener('click', turnToPrevPage);
+        nextButton.addEventListener('click', turnToNextPage);
 
         async function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -58,7 +71,6 @@
                 fileReader.onload = async function () {
                     const typedarray = new Uint8Array(this.result);
                     pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
-                    currentPage = 1; // Reset to first page
                     renderPages();
                 };
                 fileReader.readAsArrayBuffer(file);
@@ -96,10 +108,18 @@
                 elevation: 50,
                 when: {
                     turning: function (event, page) {
-                        currentPage = page;
+                        // No action needed here for buttons
                     }
                 }
             });
+        }
+
+        function turnToPrevPage() {
+            $(flipbook).turn('previous');
+        }
+
+        function turnToNextPage() {
+            $(flipbook).turn('next');
         }
     </script>
 </body>
