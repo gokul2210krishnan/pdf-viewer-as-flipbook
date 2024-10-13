@@ -106,6 +106,10 @@
             } else {
                 turnToNextPage();
             }
+
+            // Update the slider ball position after page change
+            const sliderPosition = ((currentPage - 1) / (totalPages - 1)) * (slider.offsetWidth - sliderBall.offsetWidth);
+            sliderBall.style.left = sliderPosition + 'px';
         });
 
         // Open button to trigger file input
@@ -171,12 +175,18 @@
 
         // Turn to the previous page
         function turnToPrevPage() {
-            $(flipbook).turn('previous');
+            if (currentPage > 1) {
+                currentPage--;
+                $(flipbook).turn('previous');
+            }
         }
 
         // Turn to the next page
         function turnToNextPage() {
-            $(flipbook).turn('next');
+            if (currentPage < totalPages) {
+                currentPage++;
+                $(flipbook).turn('next');
+            }
         }
 
         // Draggable slider ball functionality
@@ -194,6 +204,10 @@
                 if (newPage !== currentPage) {
                     $(flipbook).turn('page', newPage);
                     currentPage = newPage;
+
+                    // Update the slider ball position after page change
+                    const sliderPosition = ((currentPage - 1) / (totalPages - 1)) * (slider.offsetWidth - sliderBall.offsetWidth);
+                    sliderBall.style.left = sliderPosition + 'px';
                 }
             }
 
@@ -214,16 +228,6 @@
                 sliderBall.style.left = sliderPosition + 'px';
             });
         }
-
-        // Window resize event to adjust flipbook size
-        window.addEventListener('resize', function () {
-            if (flipbook && pdfDoc) {
-                $(flipbook).turn('resize', {
-                    width: flipbook.clientWidth,
-                    height: flipbook.clientHeight,
-                });
-            }
-        });
     </script>
 </body>
 </html>
