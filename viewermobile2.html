@@ -3,212 +3,191 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Flipbook</title>
+  <title>Mobile PDF Flipbook</title>
   <style>
-    body, html {
+    * {
       margin: 0;
       padding: 0;
-      height: 100%;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background-color: #f3f3f3;
-      font-family: Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
     }
     #flipbook-container {
       width: 100%;
-      height: 90vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      height: 75vh;
       position: relative;
-      background-color: #fff;
     }
     canvas {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      margin: auto;
     }
-    .circle-button {
-      position: absolute;
-      bottom: 5%;
+    #controls {
+      position: fixed;
+      bottom: 10%;
+      left: 5%;
       right: 5%;
-      background-color: #4CAF50;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #slider {
+      position: relative;
+      width: 80%;
+      height: 8px;
+      background-color: #ccc;
+      border-radius: 4px;
+    }
+    #slider-ball {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background-color: #ff6347;
+      border-radius: 50%;
+      top: -6px;
+      cursor: pointer;
+    }
+    #choose-file-btn {
+      position: fixed;
+      bottom: 2%;
+      right: 5%;
       width: 60px;
       height: 60px;
+      background-color: #ff6347;
       border-radius: 50%;
       display: flex;
       justify-content: center;
       align-items: center;
+      font-size: 24px;
+      color: white;
       cursor: pointer;
-    }
-    .circle-button input {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-    .slider {
-      position: absolute;
-      bottom: 5%;
-      left: 10%;
-      width: 80%;
-      height: 20px;
-      background-color: #ddd;
-      border-radius: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .slider-ball {
-      position: absolute;
-      top: -7px;
-      width: 35px;
-      height: 35px;
-      background-color: #4CAF50;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-    #page-number {
-      position: absolute;
-      top: 5%;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 20px;
-      color: #000;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
     }
   </style>
 </head>
 <body>
 
-  <div id="flipbook-container">
-    <canvas id="pdf-canvas"></canvas>
-    <div id="page-number">Page: 1</div>
-    <div class="circle-button">
-      <span>+</span>
-      <input type="file" id="choose-file" accept="application/pdf">
-    </div>
-    <div class="slider" id="page-slider">
-      <div class="slider-ball" id="slider-ball"></div>
-    </div>
+<div id="flipbook-container"></div>
+
+<div id="controls">
+  <div id="slider">
+    <div id="slider-ball"></div>
   </div>
+</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
-  <script>
-    let pdfDoc = null;
-    let currentPage = 1;
-    let totalPages = 0;
-    let canvas = document.getElementById('pdf-canvas');
-    let ctx = canvas.getContext('2d');
-    let pageNumText = document.getElementById('page-number');
-    const fileInput = document.getElementById('choose-file');
-    const sliderBall = document.getElementById('slider-ball');
-    const pageSlider = document.getElementById('page-slider');
-    
-    // Set up the mobile screen size adjustment
-    function fitCanvasToScreen() {
-      const container = document.getElementById('flipbook-container');
-      canvas.width = container.offsetWidth;
-      canvas.height = container.offsetHeight;
+<div id="choose-file-btn">+</div>
+<input type="file" id="file-input" accept="application/pdf" style="display: none;">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.5.207/pdf.min.js"></script>
+
+<script>
+  let currentPage = 1;
+  let pdfDoc = null;
+  let totalPages = 0;
+  const flipbookContainer = document.getElementById('flipbook-container');
+  const fileInput = document.getElementById('file-input');
+  const chooseFileBtn = document.getElementById('choose-file-btn');
+  const slider = document.getElementById('slider');
+  const sliderBall = document.getElementById('slider-ball');
+
+  chooseFileBtn.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      const fileReader = new FileReader();
+      fileReader.onload = async function () {
+        const pdfData = new Uint8Array(this.result);
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+        pdfDoc = await loadingTask.promise;
+        totalPages = pdfDoc.numPages;
+        renderPage(currentPage);
+        updateSlider();
+      };
+      fileReader.readAsArrayBuffer(file);
     }
-    fitCanvasToScreen();
+  });
 
-    // Load and render the PDF
-    function renderPage(num) {
-      pdfDoc.getPage(num).then(page => {
-        let viewport = page.getViewport({ scale: 1 });
-        let scale = canvas.width / viewport.width;
-        viewport = page.getViewport({ scale: scale });
+  function renderPage(pageNumber) {
+    flipbookContainer.innerHTML = ''; // Clear the container for the new page
 
-        canvas.height = viewport.height;
-        page.render({
-          canvasContext: ctx,
-          viewport: viewport
-        });
+    pdfDoc.getPage(pageNumber).then((page) => {
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = flipbookContainer.clientWidth / viewport.width; // Scale to fit screen width
+      const scaledViewport = page.getViewport({ scale });
 
-        // Update page number display
-        pageNumText.textContent = `Page: ${num}`;
-      });
-    }
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = scaledViewport.height;
+      canvas.width = scaledViewport.width;
 
-    // Open file picker
-    fileInput.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function() {
-          const pdfData = new Uint8Array(this.result);
-          pdfjsLib.getDocument(pdfData).promise.then(function(pdf) {
-            pdfDoc = pdf;
-            totalPages = pdf.numPages;
-            renderPage(currentPage);
+      const renderContext = {
+        canvasContext: context,
+        viewport: scaledViewport,
+      };
 
-            // Reset slider ball position and page numbers
-            updateSlider();
-          });
-        };
-        reader.readAsArrayBuffer(file);
-      }
+      page.render(renderContext);
+      flipbookContainer.appendChild(canvas);
     });
+  }
 
-    // Function to turn the page left or right
-    function turnPage(direction) {
-      if (direction === 'right' && currentPage < totalPages) {
+  flipbookContainer.addEventListener('click', (e) => {
+    const clickX = e.clientX;
+    const screenWidth = window.innerWidth;
+    if (clickX > screenWidth / 2) {
+      if (currentPage < totalPages) {
         currentPage++;
-      } else if (direction === 'left' && currentPage > 1) {
-        currentPage--;
-      }
-      renderPage(currentPage);
-      updateSlider();
-    }
-
-    // Left and right screen click for navigation
-    document.getElementById('flipbook-container').addEventListener('click', function(e) {
-      const x = e.clientX;
-      const width = window.innerWidth;
-
-      if (x >= width * 0.51) {
-        turnPage('right');
-      } else if (x <= width * 0.50) {
-        turnPage('left');
-      }
-    });
-
-    // Update the slider ball position based on page
-    function updateSlider() {
-      const sliderWidth = pageSlider.offsetWidth;
-      const ballPosition = (currentPage / totalPages) * sliderWidth;
-      sliderBall.style.left = `${ballPosition}px`;
-    }
-
-    // Add the slider ball dragging functionality
-    sliderBall.addEventListener('mousedown', function(e) {
-      const sliderWidth = pageSlider.offsetWidth;
-      const startX = e.clientX;
-
-      function moveHandler(e) {
-        const offsetX = e.clientX - startX;
-        let newLeft = Math.max(0, Math.min(sliderWidth, sliderBall.offsetLeft + offsetX));
-        const pageIndex = Math.round((newLeft / sliderWidth) * totalPages);
-        currentPage = Math.max(1, Math.min(pageIndex, totalPages));
         renderPage(currentPage);
         updateSlider();
       }
-
-      function upHandler() {
-        document.removeEventListener('mousemove', moveHandler);
-        document.removeEventListener('mouseup', upHandler);
+    } else {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+        updateSlider();
       }
+    }
+  });
 
-      document.addEventListener('mousemove', moveHandler);
-      document.addEventListener('mouseup', upHandler);
-    });
+  function updateSlider() {
+    const sliderWidth = slider.offsetWidth;
+    const position = ((currentPage - 1) / (totalPages - 1)) * sliderWidth;
+    sliderBall.style.left = `${position}px`;
+  }
 
-    // Adjust canvas size on window resize
-    window.addEventListener('resize', fitCanvasToScreen);
-  </script>
+  sliderBall.addEventListener('mousedown', function (e) {
+    const sliderRect = slider.getBoundingClientRect();
+    const onMouseMove = (event) => {
+      let newPosition = event.clientX - sliderRect.left;
+      newPosition = Math.max(0, Math.min(newPosition, slider.offsetWidth));
+      sliderBall.style.left = `${newPosition}px`;
+
+      const newPage = Math.round((newPosition / slider.offsetWidth) * (totalPages - 1)) + 1;
+      if (newPage !== currentPage) {
+        currentPage = newPage;
+        renderPage(currentPage);
+      }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+
+    document.addEventListener('mouseup', () => {
+      document.removeEventListener('mousemove', onMouseMove);
+    }, { once: true });
+  });
+
+</script>
 
 </body>
 </html>
