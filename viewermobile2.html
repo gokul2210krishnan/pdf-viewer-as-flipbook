@@ -166,24 +166,30 @@
     sliderBall.style.left = `${position}px`;
   }
 
-  sliderBall.addEventListener('mousedown', function (e) {
+  function handleDrag(event) {
     const sliderRect = slider.getBoundingClientRect();
-    const onMouseMove = (event) => {
-      let newPosition = event.clientX - sliderRect.left;
-      newPosition = Math.max(0, Math.min(newPosition, slider.offsetWidth));
-      sliderBall.style.left = `${newPosition}px`;
+    let newPosition = (event.type === 'mousemove' || event.type === 'mousedown') ? event.clientX - sliderRect.left : event.touches[0].clientX - sliderRect.left;
+    newPosition = Math.max(0, Math.min(newPosition, slider.offsetWidth));
+    sliderBall.style.left = `${newPosition}px`;
 
-      const newPage = Math.round((newPosition / slider.offsetWidth) * (totalPages - 1)) + 1;
-      if (newPage !== currentPage) {
-        currentPage = newPage;
-        renderPage(currentPage);
-      }
-    };
+    const newPage = Math.round((newPosition / slider.offsetWidth) * (totalPages - 1)) + 1;
+    if (newPage !== currentPage) {
+      currentPage = newPage;
+      renderPage(currentPage);
+    }
+  }
 
-    document.addEventListener('mousemove', onMouseMove);
-
+  sliderBall.addEventListener('mousedown', (e) => {
+    document.addEventListener('mousemove', handleDrag);
     document.addEventListener('mouseup', () => {
-      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mousemove', handleDrag);
+    }, { once: true });
+  });
+
+  sliderBall.addEventListener('touchstart', (e) => {
+    document.addEventListener('touchmove', handleDrag);
+    document.addEventListener('touchend', () => {
+      document.removeEventListener('touchmove', handleDrag);
     }, { once: true });
   });
 
